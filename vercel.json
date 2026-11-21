@@ -1,5 +1,5 @@
 {
   "buildCommand": "",
   "outputDirectory": "web",
-  "rewrites": [{ "source": "/", "destination": "/explorer.html" }]
+  "redirects": [{ "source": "/", "destination": "/explorer.html", "permanent": false }]
 }
