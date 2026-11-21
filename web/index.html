@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer Churn Predictor</title>
+<style>
+:root{--ink:#14202b;--mut:#5d6b78;--bg:#f4f6f8;--card:#fff;--line:#dde3e9;--acc:#1f7a8c;--hi:#c2410c;--lo:#15803d}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+main{max-width:980px;margin:0 auto;padding:28px 18px 48px}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:17px;margin:0 0 14px}
+.sub{color:var(--mut);margin:0 0 22px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+label{display:block;font-size:14px;font-weight:600;margin:14px 0 6px}label:first-of-type{margin-top:0}
+label span{float:right;font-weight:500;color:var(--acc)}
+input[type=range]{width:100%;accent-color:var(--acc)}
+select{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:#fff}
+.tog{display:flex;gap:8px}.tog button{flex:1;padding:9px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:15px;cursor:pointer}
+.tog button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.big{font-size:64px;font-weight:700;line-height:1}
+.pill{display:inline-block;padding:5px 12px;border-radius:99px;font-weight:600;font-size:14px;margin-top:10px}
+.pill.hi{background:#ffedd5;color:var(--hi)}.pill.lo{background:#dcfce7;color:var(--lo)}
+.bar{height:12px;background:#e6ebf0;border-radius:99px;margin:16px 0 6px;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--acc);border-radius:99px}
+.small{font-size:13px;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}td{padding:8px 0;border-bottom:1px solid var(--line)}td:last-child{text-align:right;font-weight:700}
+.note{margin-top:18px;font-size:13px;color:var(--mut)}
+</style></head><body><main>
+<h1>Customer Churn Predictor</h1>
+<p class="sub">Enter a customer's details to see the chance they cancel in the next 90 days. Model: logistic regression trained on synthetic telecom data.</p>
+<div class="grid">
+<section class="card"><h2>Customer details</h2>
+<label>Months as a customer <span id="v_ten"></span></label><input type="range" id="ten" min="1" max="84" value="24">
+<label>Plan</label><select id="plan"><option value="basic">Basic</option><option value="plus" selected>Plus</option><option value="premium">Premium</option></select>
+<label>Monthly charge <span id="v_chg"></span></label><input type="range" id="chg" min="25" max="110" value="60">
+<label>Support tickets, last 30 days <span id="v_tix"></span></label><input type="range" id="tix" min="0" max="10" value="3">
+<label>Usage minutes per month <span id="v_use"></span></label><input type="range" id="use" min="0" max="600" value="250">
+<label>Late payment this month</label>
+<div class="tog"><button id="lateN">No</button><button id="lateY" class="on">Yes</button></div>
+</section>
+<section class="card"><h2>Prediction</h2>
+<div class="big" id="prob">0%</div>
+<div class="small">chance of churning in 90 days</div>
+<div class="bar"><i id="barfill"></i></div>
+<div class="small">Average customer in the data: about 5.7%</div>
+<div><span class="pill" id="pill"></span></div>
+<h2 style="margin-top:26px">Alert threshold <span class="small" id="v_thr" style="float:right"></span></h2>
+<input type="range" id="thr" min="0" max="6" step="1" value="2">
+<p class="small" style="margin:8px 0 0">Customers at or above this chance get flagged. Lower catches more churners but raises false alarms. Results below are from the held-out test period (Oct to Dec 2025).</p>
+<table id="tbl"></table>
+</section></div>
+<p class="note">Educational example built with the spec, plan, verify method. The data is synthetic, so the predictions are not real. The model passed 7 automated tests (no date overlap between train and test, preprocessing fit on training data only, and others).</p>
+</main>
+<script>
+const M={"mean": [38.692, 55.358039999999995, 0.8217777777777778, 305.07635555555555, 0.10266666666666667], "scale": [18.59676860819284, 23.699255460001268, 1.0229658165004318, 72.31195236109713, 0.30352301761517564], "plans": ["basic", "plus", "premium"], "coef": [-0.22386966537724295, -0.0008369058586951521, 0.3721317369413472, -0.5287906942326086, 0.3095511096136922, -0.17588869499288243, 0.05325053989502424, 0.09551188608735775], "intercept": -3.1107635941690455, "thresholds": [{"t": 0.02, "flagged": 534, "caught": 46, "missed": 2, "falseAlarms": 488}, {"t": 0.04, "flagged": 284, "caught": 32, "missed": 16, "falseAlarms": 252}, {"t": 0.06, "flagged": 172, "caught": 24, "missed": 24, "falseAlarms": 148}, {"t": 0.08, "flagged": 108, "caught": 19, "missed": 29, "falseAlarms": 89}, {"t": 0.1, "flagged": 73, "caught": 16, "missed": 32, "falseAlarms": 57}, {"t": 0.15, "flagged": 36, "caught": 12, "missed": 36, "falseAlarms": 24}, {"t": 0.2, "flagged": 17, "caught": 8, "missed": 40, "falseAlarms": 9}], "testRows": 750, "testChurners": 48};
+const $=id=>document.getElementById(id);let late=1;
+function predict(a){
+ const x=[a.ten,a.chg,a.tix,a.use,a.late].map((v,i)=>(v-M.mean[i])/M.scale[i]);
+ M.plans.forEach(p=>x.push(p===a.plan?1:0));
+ let z=M.intercept;x.forEach((v,i)=>z+=v*M.coef[i]);return 1/(1+Math.exp(-z));
+}
+function render(){
+ const a={ten:+$("ten").value,plan:$("plan").value,chg:+$("chg").value,tix:+$("tix").value,use:+$("use").value,late};
+ $("v_ten").textContent=a.ten+" mo";$("v_chg").textContent="$"+a.chg;$("v_tix").textContent=a.tix;$("v_use").textContent=a.use;
+ const p=predict(a),T=M.thresholds[+$("thr").value];
+ $("prob").textContent=(p*100).toFixed(1)+"%";$("barfill").style.width=Math.min(100,p*100)+"%";
+ const hi=p>=T.t;$("pill").className="pill "+(hi?"hi":"lo");
+ $("pill").textContent=hi?"Flagged: at risk":"Not flagged";
+ $("v_thr").textContent="flag at "+Math.round(T.t*100)+"% or more";
+ $("tbl").innerHTML=`<tr><td>Customers flagged (of ${M.testRows})</td><td>${T.flagged}</td></tr>
+ <tr><td>Churners caught (of ${M.testChurners})</td><td>${T.caught}</td></tr>
+ <tr><td>Churners missed</td><td>${T.missed}</td></tr>
+ <tr><td>False alarms</td><td>${T.falseAlarms}</td></tr>`;
+}
+["ten","plan","chg","tix","use","thr"].forEach(i=>$(i).addEventListener("input",render));
+$("lateN").onclick=()=>{late=0;$("lateN").className="on";$("lateY").className="";render()};
+$("lateY").onclick=()=>{late=1;$("lateY").className="on";$("lateN").className="";render()};
+render();
+</script></body></html>
